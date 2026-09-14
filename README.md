@@ -25,17 +25,19 @@ The launcher is **backend-agnostic**, meaning it isn't made for one specific pri
 The interface is built with regular HTML, CSS and JavaScript and runs inside **Microsoft Edge WebView2**. The native parts of the launcher are handled by C++.
 
 > **Currently supported: Windows 10 and Windows 11 only.**
+>
+> **Targets Fortnite build 4.10 only.** The launcher manages and launches a single build (4.10), with multiplayer support landing soon.
 
 ---
 
 ## Features
 
-### Build Library
+### Build setup (4.10)
 
-- Import Fortnite builds you already have
-- Keep multiple builds in one place
-- Add notes and launch settings for each build
-- Download builds from a configured archive
+- Import your Fortnite 4.10 build
+- Validate the build files before launching
+- Launch settings for the build
+- Download the 4.10 build from a configured archive
 
 ### Downloads
 
@@ -43,15 +45,14 @@ The interface is built with regular HTML, CSS and JavaScript and runs inside **M
 - Chunked downloads for large builds
 - Automatic retries
 - SHA-256 verification
-- Manifest-based build information
+- Manifest-based build information (single 4.10 manifest)
 
 Large builds can be tens of gigabytes, so the launcher is designed to handle interrupted downloads without starting over.
 
 ### Launching
 
-- Launch builds with one click
-- Custom launch arguments for each build
-- Multiple clients
+- Launch the 4.10 build with one click
+- Backend auth passed to the game for multiplayer (coming soon)
 - Basic process monitoring
 
 ### Backend
@@ -188,7 +189,7 @@ On the first launch:
 
 1. Enter your backend URL.
 2. Log in.
-3. Import a Fortnite build or choose one from your configured archive.
+3. Import your Fortnite 4.10 build or download it from your configured archive.
 4. Launch the build.
 
 That's it.
@@ -274,6 +275,7 @@ The launcher only handles the parts it needs. Once Fortnite starts, the game com
 - [x] Resumable downloads
 - [x] SHA-256 verification
 - [x] Launch builds on Windows
+- [ ] Multiplayer-ready launches (4.10)
 
 ### v1.1.0 — Quality of life
 

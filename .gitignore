@@ -1,0 +1,16 @@
+# Build output
+build/
+out/
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+
+# CMake user presets
+CMakeUserPresets.json
+
+# OS junk
+Thumbs.db
+Desktop.ini
