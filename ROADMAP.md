@@ -157,6 +157,26 @@ ogfn-launcher/
 
 **Goal:** a launched 4.10 client actually connects to the backend for multiplayer.
 
+| Phase | Scope | Files | Commit |
+|---|---|---|---|
+| 8.1 | Build launch args with backend auth (`-AUTH_LOGIN/-AUTH_PASSWORD/-AUTH_URL` style + backend URL) | `src/native/process.cpp` | `feat(native): pass backend auth args to game launch` |
+| 8.2 | Gate launch on a verified backend session | auth + process | `feat: gate launch on verified backend session` |
+| 8.3 | Play page: session status, "connect to multiplayer" indicator | web | `feat(web): show multiplayer session status` |
+
+**Verify:** launch with a logged-in session → game starts with auth args; logged-out launch is blocked with a clear message.
+
+---
+
+## Later (post-core, unprioritized)
+
+- Multi-build library support (explicitly deferred — 4.10-only for now)
+- Launcher self-updater + stable/beta channels
+- Injection manager & DLL presets
+- News feed & backend status pages
+- Inno Setup installer, CI workflows, signed releases
+
+---
+
 ## Current position
 
 ➡️ **Step 1, Phase 1.1** — verified. Next: approve Phase 1.2.
