@@ -2,26 +2,27 @@
 
 How this repo goes from empty to a working launcher.
 
-**One phase = one commit.** Code is written only after a phase is approved,
-and every phase leaves the repo in a state that builds.
+**One phase = one commit.** Every phase leaves the repo in a state that builds.
 
 ---
 
 ## Scope
 
-- **Fortnite build 4.10 only.** The launcher manages, validates, downloads and launches exactly one build: 4.10. Multi-build library management is explicitly out of scope.
-- **Multiplayer is near-term.** Launches must pass backend auth to the game so multiplayer sessions work (see Step 8, planned as part of the core, not "later").
+- **Fortnite build 4.10 only (CL 4053532, Season 4).** The launcher manages,
+  validates, imports and (soon) launches exactly one build. Multi-build
+  library management is explicitly out of scope.
+- **Season 4 is multiplayer-only.** Launching stays disabled until the
+  backend/server phase lands; the UI gates the Launch button behind the
+  multiplayer phase.
 - Windows 10/11, x64 only. Vanilla web UI, C++20 native core, backend-agnostic.
 
 ---
 
 ## Execution rules
 
-1. **Propose → approve → code → verify → commit → next phase.** Nothing is executed without approval.
-2. Every phase must compile at the end of it. No half-broken states get committed.
-3. Commit messages follow Conventional Commits: `type(scope): summary`.
-4. Web UI stays framework-free (vanilla HTML/CSS/JS). Native code stays C++20 / Win32 / WebView2.
-5. I (the agent) write code; you review and commit/push yourself.
+1. Every phase must compile at the end of it. No half-broken states get committed.
+2. Commit messages follow Conventional Commits: `type(scope): summary`.
+3. Web UI stays framework-free (vanilla HTML/CSS/JS). Native code stays C++20 / Win32 / WebView2.
 
 ---
 
@@ -29,154 +30,137 @@ and every phase leaves the repo in a state that builds.
 
 ```text
 ogfn-launcher/
-├── CMakeLists.txt          # Build recipe (MSVC + auto-fetched WebView2 SDK)
+├── CMakeLists.txt          # Build recipe (MSVC + auto-fetched WebView2 SDK + JSON)
 ├── src/
 │   ├── native/             # C++20 / Win32 / WebView2
 │   │   ├── main.cpp        # Window + WebView2 host
 │   │   ├── bridge.cpp/.h   # JS ⇄ C++ JSON message bridge
 │   │   ├── config.cpp/.h   # Settings persistence (%APPDATA%)
-│   │   ├── http.cpp/.h     # Async HTTP client
-│   │   ├── auth.cpp/.h     # OAuth token flow
-│   │   ├── build410.cpp/.h # 4.10 build import/validate
-│   │   ├── process.cpp/.h  # Launch + monitor (auth args) Fortnite
-│   │   ├── downloads.cpp/.h# Chunked resumable downloads (4.10 manifest)
-│   │   └── crypto.cpp/.h   # SHA-256 verification
+│   │   ├── accounts.cpp/.h # Local accounts + session (PBKDF2)
+│   │   ├── crypto.cpp/.h   # SHA-256 / PBKDF2 (CNG)
+│   │   ├── build410.cpp/.h # 4.10 build import/validate (ZIP via Shell)
+│   │   ├── log.cpp/.h      # Structured logging
+│   │   └── util.cpp/.h     # Paths, UTF conversion, COM dialogs
 │   └── web/                # Vanilla HTML / CSS / JS
-│       ├── index.html
+│       ├── index.html      # Auth screen + Play / Setup / Settings pages
 │       ├── css/
 │       └── js/
-├── installer/              # Inno Setup (later)
-├── docs/                   # Bridge protocol, docs
+├── installer/              # Inno Setup script (setup-app installer)
+├── docs/bridge-protocol.md # Bridge message contract
 └── .github/workflows/      # CI + releases (later)
 ```
 
 ---
 
-## Step 1 — Skeleton: window + WebView2  🚧 IN PROGRESS
+## Step 1 — Skeleton: window + WebView2  ✅ DONE
 
-**Goal:** a double-clickable `OGFNLauncher.exe` that opens a real window and renders a local HTML page. This de-risks the toolchain before any feature work.
+**Goal:** a double-clickable `OGFNLauncher.exe` that opens a real window and renders a local HTML page.
 
-| Phase | Scope | Files | Commit | Status |
-|---|---|---|---|---|
-| 1.1 | Build foundation: CMake recipe, WebView2 SDK auto-fetch, gitignore | `CMakeLists.txt`, `.gitignore` | `chore: add CMake build with WebView2 SDK fetch` | ✅ verified |
-| 1.2 | Native host: Win32 window + WebView2 controller loading `web/index.html` | `src/native/main.cpp` | `feat(native): add Win32 window hosting WebView2` | ⏳ awaiting approval |
-| 1.3 | Placeholder shell: minimal page proving the host works | `src/web/index.html` | `feat(web): add placeholder shell for WebView2 host` | ⏳ awaiting approval |
-
-**Verify:** `cmake -B build` then `cmake --build build --config Release` → run exe → placeholder shows "WebView2 OK".
+| Phase | Scope | Status |
+|---|---|---|
+| 1.1 | CMake recipe, WebView2 SDK auto-fetch, gitignore | ✅ verified |
+| 1.2 | Native host: Win32 window + WebView2 controller | ✅ verified |
+| 1.3 | Placeholder shell page | ✅ verified |
 
 ---
 
-## Step 2 — Web UI shell
+## Step 2 — Web UI shell  ✅ DONE
 
-**Goal:** real app frame — sidebar nav, pages, theming. Still 100% static, no native calls. Pages reflect the 4.10-only flow: **Play**, **Setup**, **Settings**.
-
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 2.1 | Design tokens + base layout (dark/light CSS variables) | `src/web/css/base.css` | `feat(web): add design tokens and base layout` |
-| 2.2 | App frame: sidebar nav + hash-based page router | `index.html`, `js/app.js` | `feat(web): add app frame with page navigation` |
-| 2.3 | Stub pages: Play, Setup, Settings | `js/pages/*.js` | `feat(web): add stub pages for main sections` |
-
-**Verify:** click through all pages; no console errors.
+| Phase | Scope | Status |
+|---|---|---|
+| 2.1 | Design tokens + base layout (dark/light CSS variables) | ✅ |
+| 2.2 | App frame: sidebar nav + page routing | ✅ |
+| 2.3 | Play, Setup & Download, Settings pages | ✅ |
 
 ---
 
-## Step 3 — JS ⇄ C++ bridge  *(backbone — design carefully)*
+## Step 3 — JS ⇄ C++ bridge  ✅ DONE
 
-**Goal:** one versioned JSON message protocol between UI and native. Every later feature rides on it.
-
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 3.1 | Message contract: `{id, action, payload}` + response/error shapes | `docs/bridge-protocol.md` | `docs: define bridge message protocol` |
-| 3.2 | Native host object + dispatch loop | `src/native/bridge.cpp/.h` | `feat(native): add bridge host object and dispatcher` |
-| 3.3 | JS client wrapper with promise-based calls | `src/web/js/bridge.js` | `feat(web): add promise-based bridge client` |
-| 3.4 | `ping` action end-to-end (proof the pipe works) | both sides | `feat: add ping action as end-to-end bridge test` |
-
-**Verify:** button in UI → native round-trip → response rendered.
+| Phase | Scope | Status |
+|---|---|---|
+| 3.1 | Message contract `{id, action, payload}` | ✅ `docs/bridge-protocol.md` |
+| 3.2 | Native dispatch loop (`bridge.cpp`) | ✅ |
+| 3.3 | Promise-based JS client (`js/bridge.js`) | ✅ |
+| 3.4 | `ping` + full state actions end-to-end | ✅ verified |
 
 ---
 
-## Step 4 — Config persistence
+## Step 4 — Config persistence  ✅ DONE
 
-**Goal:** settings survive restarts.
-
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 4.1 | Load/save `%APPDATA%\OGFNLauncher\config.json` | `src/native/config.cpp/.h` | `feat(native): add config load and save` |
-| 4.2 | Bridge actions `config.get` / `config.set` | bridge | `feat(bridge): expose config get and set` |
-| 4.3 | Settings page wiring (backend URL, 4.10 path, theme) | web | `feat(web): wire settings page to config` |
-
-**Verify:** change a setting, restart launcher, value persists.
+| Phase | Scope | Status |
+|---|---|---|
+| 4.1 | `%APPDATA%\OGFNLauncher\config.json` with deep-merge patching | ✅ |
+| 4.2 | `config.patch` bridge action | ✅ |
+| 4.3 | Settings page wiring (theme, accent) | ✅ |
 
 ---
 
-## Step 5 — Backend login flow
+## Step 5 — Accounts (local, backend-ready)  ✅ DONE (adapted)
 
-**Goal:** first real integration — configure backend URL, log in, verified session.
+> Decision: accounts work **locally** now (PBKDF2-hashed, stored in
+> `%APPDATA%\OGFNLauncher\accounts.json`). The backend OAuth flow plugs into
+> the same session state during the server phase.
 
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 5.1 | Async HTTP client (WinHTTP) | `src/native/http.cpp/.h` | `feat(native): add async http client` |
-| 5.2 | `POST /account/api/oauth/token` + token storage | `src/native/auth.cpp/.h` | `feat(native): add oauth token flow` |
-| 5.3 | `GET /account/api/oauth/verify` + session state | auth + bridge | `feat: verify session on login and startup` |
-| 5.4 | Login UI (URL + credentials, status display) | web | `feat(web): add login flow UI` |
-
-**Verify:** log in against a backend; token persists; verify endpoint returns OK.
-
----
-
-## Step 6 — 4.10 build setup & launching
-
-**Goal:** import and validate the 4.10 build, then launch it. Single build — no library management.
-
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 6.1 | Import 4.10 build (folder pick, scan, register) | `src/native/build410.cpp/.h` | `feat(native): add 4.10 build import and scan` |
-| 6.2 | Validate 4.10 layout (key files/hashes present) | `build410.cpp` | `feat(native): validate 4.10 build files` |
-| 6.3 | Setup page UI + launch button state | web | `feat(web): add build setup page` |
-| 6.4 | Process launch + basic monitoring | `src/native/process.cpp/.h` | `feat(native): add build launch and monitor` |
-
-**Verify:** import a 4.10 folder, validation passes, launch starts the game process.
+| Phase | Scope | Status |
+|---|---|---|
+| 5.1 | Password hashing (PBKDF2-HMAC-SHA256 via CNG) | ✅ |
+| 5.2 | Sign up / sign in / sign out / change password / delete | ✅ |
+| 5.3 | Persistent session (restored on restart, tied to account) | ✅ |
+| 5.4 | Auth screen (sign in / create account tabs) | ✅ |
 
 ---
 
-## Step 7 — Downloads (single 4.10 manifest)
+## Step 6 — 4.10 build setup  ✅ DONE (adapted)
 
-**Goal:** fetch the known 4.10 build resiliently — tens of GB, interruption-safe.
+> Decision: the launcher does **not** download the build itself. The Setup
+> page opens the archive URL in the user's browser; the user imports the
+> downloaded ZIP and the launcher extracts + registers it.
 
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 7.1 | Chunked downloader with resume | `src/native/downloads.cpp/.h` | `feat(native): add chunked resumable downloader` |
-| 7.2 | SHA-256 verification | `src/native/crypto.cpp/.h` | `feat(native): add sha-256 verification` |
-| 7.3 | 4.10 manifest handling + live progress events to UI | bridge + web | `feat: add 4.10 manifest downloads with live progress` |
-
-**Verify:** download against a small test manifest; kill mid-download; resume completes; hash checks out.
+| Phase | Scope | Status |
+|---|---|---|
+| 6.1 | Setup page with 4-step flow (browser download → import → validate) | ✅ |
+| 6.2 | ZIP extraction (Windows Shell, handles nested archive layout) | ✅ |
+| 6.3 | Folder import for already-extracted builds | ✅ |
+| 6.4 | Build validation (core folders + game exe) and registration | ✅ |
 
 ---
 
-## Step 8 — Multiplayer readiness  ⬆️ pulled forward (near-term)
+## Step 7 — Downloads (single 4.10 manifest)  ⏸ DEFERRED
 
-**Goal:** a launched 4.10 client actually connects to the backend for multiplayer.
+Superseded by the browser-download flow. Chunked in-app downloading can be
+revisited later if a faster/mirrored source is configured; the bridge and CSP
+already funnel all network I/O through native, so this slots in cleanly.
 
-| Phase | Scope | Files | Commit |
-|---|---|---|---|
-| 8.1 | Build launch args with backend auth (`-AUTH_LOGIN/-AUTH_PASSWORD/-AUTH_URL` style + backend URL) | `src/native/process.cpp` | `feat(native): pass backend auth args to game launch` |
-| 8.2 | Gate launch on a verified backend session | auth + process | `feat: gate launch on verified backend session` |
-| 8.3 | Play page: session status, "connect to multiplayer" indicator | web | `feat(web): show multiplayer session status` |
+---
 
-**Verify:** launch with a logged-in session → game starts with auth args; logged-out launch is blocked with a clear message.
+## Step 8 — Multiplayer readiness  ⬅️ NEXT (server phase)
+
+**Goal:** a launched 4.10 client connects to the backend for multiplayer.
+Launching is currently **disabled by design** (`build.launchBlocked: true`).
+
+| Phase | Scope | Files |
+|---|---|---|
+| 8.1 | Backend OAuth token flow (HTTP client + token storage) | `http.cpp/.h`, `auth.cpp/.h` |
+| 8.2 | Launch with backend auth args (`-AUTH_LOGIN/-AUTH_PASSWORD/-AUTH_URL` style) | `process.cpp/.h` |
+| 8.3 | Gate launch on a verified backend session; unlock the Launch button | auth + process + web |
+| 8.4 | Play page: session status, "connect to multiplayer" indicator | web |
+
+**Verify:** launch with a logged-in backend session → game starts with auth
+args; logged-out launch is blocked with a clear message.
 
 ---
 
 ## Later (post-core, unprioritized)
 
-- Multi-build library support (explicitly deferred — 4.10-only for now)
 - Launcher self-updater + stable/beta channels
-- Injection manager & DLL presets
+- Inno Setup CI workflow + signed releases (script already in `installer/`)
 - News feed & backend status pages
-- Inno Setup installer, CI workflows, signed releases
+- Backend account migration (link local accounts to server accounts)
 
 ---
 
 ## Current position
 
-➡️ **Step 1, Phase 1.1** — verified. Next: approve Phase 1.2.
+➡️ **Steps 1–6 complete and verified.** The launcher builds, runs, and the
+full onboarding flow works: create account → download instructions → import
+ZIP → validation → ready. Next: **Step 8 (server/multiplayer phase)**.

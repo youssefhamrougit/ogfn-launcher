@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'" />
+  <title>OGFN Launcher</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+  <!-- ============ AUTH SCREEN (sign in / create account) ============ -->
+  <div id="auth-screen" class="visible">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="logo">OG</div>
+        <div>
+          <div class="name">OGFN Launcher</div>
+          <div class="sub">Season 4 · build 4.10 (CL 4053532)</div>
+        </div>
+      </div>
+
+      <div class="auth-tabs" role="tablist">
+        <button id="tab-signin" class="active" type="button">Sign in</button>
+        <button id="tab-signup" type="button">Create account</button>
+      </div>
+
+      <form id="auth-form" autocomplete="off">
+        <div class="field">
+          <label for="auth-username">Username</label>
+          <input class="input" id="auth-username" maxlength="24"
+                 placeholder="3–24 letters, numbers, - or _" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input class="input" id="auth-password" type="password" maxlength="128"
+                 placeholder="At least 8 characters" autocomplete="current-password" />
+        </div>
+        <div class="field" id="auth-confirm-field" style="display:none">
+          <label for="auth-confirm">Confirm password</label>
+          <input class="input" id="auth-confirm" type="password" maxlength="128"
+                 placeholder="Repeat your password" autocomplete="new-password" />
+        </div>
+
+        <div id="auth-error" class="error-text"></div>
+
+        <button class="btn primary large" id="auth-submit" type="submit"
+                style="width:100%">Sign in</button>
+      </form>
+
+      <div class="auth-footer">
+        Accounts are stored on this PC. Server accounts arrive with the multiplayer phase.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN APP ============ -->
+  <div id="app" style="display:none">
+
+    <nav id="sidebar">
+      <div class="brand">
+        <div class="logo">OG</div>
+        <div>
+          <span class="name">OGFN Launcher</span>
+          <span class="sub">Season 4 · 4.10</span>
+        </div>
+      </div>
+
+      <button class="nav-item" data-page="play" type="button">
+        <span class="icon">▶</span> Play
+      </button>
+      <button class="nav-item" data-page="setup" type="button">
+        <span class="icon">⭳</span> Setup &amp; Download
+      </button>
+      <button class="nav-item" data-page="settings" type="button">
+        <span class="icon">⚙</span> Settings
+      </button>
+
+      <div class="spacer"></div>
+
+      <div class="user-chip" id="user-chip">
+        <div class="avatar" id="user-avatar">?</div>
+        <div class="who">
+          <div class="u" id="user-name">Not signed in</div>
+          <div class="s" id="user-status">local account</div>
+        </div>
+        <button class="btn small" id="signout-btn" type="button" title="Sign out">⎋</button>
+      </div>
+    </nav>
+
+    <main id="main">
+
+      <!-- ============ PLAY ============ -->
+      <section class="page" id="page-play">
+        <h1 class="page-title">Play</h1>
+        <p class="page-sub">Fortnite 4.10 (CL 4053532) — Season 4</p>
+
+        <div class="card" id="play-card">
+          <div id="play-status" style="margin-bottom:14px"></div>
+
+          <div style="display:flex; align-items:center; gap:14px">
+            <button class="btn primary large" id="launch-btn" type="button" disabled>
+              🔒 Launch
+            </button>
+            <div class="faint" id="launch-note">
+              Launch unlocks with the multiplayer phase.
+            </div>
+          </div>
+        </div>
+
+        <h3>Build details</h3>
+        <div class="card" id="build-details" style="font-size:14px"></div>
+      </section>
+
+      <!-- ============ SETUP & DOWNLOAD ============ -->
+      <section class="page" id="page-setup">
+        <h1 class="page-title">Setup &amp; Download</h1>
+        <p class="page-sub">Get Season 4 (4.10) onto your PC and import it.</p>
+
+        <div class="steps">
+          <!-- STEP 1: download in browser -->
+          <div class="step" id="step-1">
+            <div class="num">1</div>
+            <div class="body">
+              <div class="t">Download the 4.10 build in your browser</div>
+              <div class="d">
+                Click the button below to open the download page in your browser
+                (about <b>27&nbsp;GB</b>). Save the file somewhere you can find it —
+                e.g. <kbd>Downloads</kbd>.
+              </div>
+              <div class="actions">
+                <button class="btn primary" id="open-download-page" type="button">
+                  Open download page ↗
+                </button>
+                <button class="btn" id="copy-download-link" type="button">Copy link</button>
+              </div>
+              <div class="link-box">
+                <span id="download-url">…</span>
+                <button class="btn small" id="copy-link-2" type="button">Copy</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2: wait for the zip -->
+          <div class="step" id="step-2">
+            <div class="num">2</div>
+            <div class="body">
+              <div class="t">Wait for the download to finish</div>
+              <div class="d">
+                The file is named <span class="mono">4.10-CL-4053532.zip</span>.
+                Don't rename it. If your browser shows the file as
+                <span class="mono">4.10-CL-4053532.zip.crdownload</span> it's still downloading.
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: import -->
+          <div class="step" id="step-3">
+            <div class="num">3</div>
+            <div class="body">
+              <div class="t">Import the ZIP into the launcher</div>
+              <div class="d">
+                The launcher extracts the archive next to where you saved it and
+                registers the build. You can also import a build that's already
+                extracted as a folder.
+              </div>
+              <div class="actions">
+                <button class="btn primary" id="import-zip-btn" type="button">
+                  Select ZIP &amp; install…
+                </button>
+                <button class="btn" id="import-folder-btn" type="button">
+                  I already extracted it — pick folder…
+                </button>
+                <span class="faint" id="import-progress"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 4: validate -->
+          <div class="step" id="step-4">
+            <div class="num">4</div>
+            <div class="body">
+              <div class="t">Validation</div>
+              <div class="d" id="validate-desc">
+                The launcher checks the core build folders automatically after import.
+              </div>
+              <div class="actions">
+                <button class="btn" id="validate-btn" type="button">Re-run validation</button>
+                <span id="validate-status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout" style="margin-top:22px">
+          <span>⚠</span>
+          <span>
+            Extracting a ~27&nbsp;GB ZIP can take several minutes. Don't close the
+            launcher while <span class="mono">explorer.exe</span> is doing the work —
+            you'll see the files appear in the destination folder.
+          </span>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="page" id="page-settings">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">Personalize the launcher and manage your local data.</p>
+
+        <h3>Appearance</h3>
+        <div class="card">
+          <div class="field">
+            <label>Theme</label>
+            <select class="input" id="set-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Accent color</label>
+            <input class="input" id="set-accent" type="color" style="width:80px; height:38px; padding:4px" />
+          </div>
+        </div>
+
+        <h3>Account</h3>
+        <div class="card" id="account-card"></div>
+
+        <h3>Data</h3>
+        <div class="card">
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button class="btn" id="open-data-folder" type="button">Open data folder</button>
+            <button class="btn" id="view-logs-btn" type="button">View logs</button>
+          </div>
+          <div class="faint" style="margin-top:10px">
+            Config, accounts and logs live in
+            <span class="mono">%APPDATA%\OGFNLauncher</span>.
+          </div>
+        </div>
+
+        <h3>About</h3>
+        <div class="card" id="about-card"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- toast -->
+  <div id="toast" style="display:none; position:fixed; left:50%; bottom:28px;
+       transform:translateX(-50%); background:var(--bg-card); color:var(--text);
+       border:1px solid var(--border); border-radius:10px; padding:11px 18px;
+       font-size:14px; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.4)"></div>
+
+  <script src="js/bridge.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

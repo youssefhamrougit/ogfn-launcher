@@ -2,12 +2,13 @@
 
 # OGFN Launcher
 
-**A simple, lightweight launcher for OGFN (OG Fortnite) private servers.**
+**A simple, lightweight launcher for OGFN (OG Fortnite) private servers — Season 4 only.**
 
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)](#requirements)
+[![Build](https://img.shields.io/badge/build-4.10%20%28CL%204053532%29-orange)](#installing-the-410-build)
 [![License](https://img.shields.io/github/license/OWNER/REPO)](LICENSE)
 
-Built with **C++ and vanilla HTML/CSS/JS**.  
+Built with **C++ and vanilla HTML/CSS/JS**.
 No Electron. No big frameworks. Just a small native launcher.
 
 </div>
@@ -16,75 +17,89 @@ No Electron. No big frameworks. Just a small native launcher.
 
 ## What is OGFN Launcher?
 
-OGFN Launcher is an open-source launcher for **OG Fortnite private servers**.
+OGFN Launcher is an open-source launcher for **OG Fortnite private servers**,
+built for **Fortnite build 4.10 (CL 4053532) — Season 4**.
 
-The goal is simple: give you one place to manage your Fortnite builds, connect to a backend, and launch the game without having to manually deal with a bunch of files and commands.
+The launcher is **multiplayer-first**: Season 4 is played on private servers,
+so launching stays disabled until your account and build are ready for the
+backend phase (in development).
 
-The launcher is **backend-agnostic**, meaning it isn't made for one specific private server. You can configure the backend you want to use.
+The interface is regular HTML, CSS and JavaScript running inside **Microsoft
+Edge WebView2**. The native parts are C++20.
 
-The interface is built with regular HTML, CSS and JavaScript and runs inside **Microsoft Edge WebView2**. The native parts of the launcher are handled by C++.
-
-> **Currently supported: Windows 10 and Windows 11 only.**
->
-> **Targets Fortnite build 4.10 only.** The launcher manages and launches a single build (4.10), with multiplayer support landing soon.
+> **Currently supported: Windows 10 and Windows 11 only, 64-bit.**
 
 ---
 
-## Features
+## What works today
 
-### Build setup (4.10)
+### Accounts
 
-- Import your Fortnite 4.10 build
-- Validate the build files before launching
-- Launch settings for the build
-- Download the 4.10 build from a configured archive
+- Create an account and sign in right on your PC
+- Passwords stored with PBKDF2-HMAC-SHA256 (120k iterations, random salt)
+- Session persists across restarts
+- Change password / delete account from Settings
 
-### Downloads
+### 4.10 build setup
 
-- Resumable downloads
-- Chunked downloads for large builds
-- Automatic retries
-- SHA-256 verification
-- Manifest-based build information (single 4.10 manifest)
+- Step-by-step download page that opens the archive in your browser
+- Import the downloaded ZIP — the launcher extracts and registers it
+- Or import a build folder you already extracted
+- Validation of the core build layout before you play
+- One-click copy of the download link
 
-Large builds can be tens of gigabytes, so the launcher is designed to handle interrupted downloads without starting over.
+### Launcher
 
-### Launching
+- Dark / light theme + custom accent color
+- Structured logs (viewable in-app from Settings)
+- Config in `%APPDATA%\OGFNLauncher\config.json`
 
-- Launch the 4.10 build with one click
-- Backend auth passed to the game for multiplayer (coming soon)
-- Basic process monitoring
+### Multiplayer (next phase)
 
-### Backend
+- Backend OAuth login and server accounts
+- Launch button unlocks once a backend session can be verified
+- Auth passed to the game for multiplayer sessions
 
-- Configure your own backend URL
-- Epic-style authentication
-- Token verification
-- Backend status information
-- News feed support
+---
 
-The launcher itself doesn't depend on one specific OGFN backend.
+## Installing the launcher
 
-### Updates
+### Option A — Installer (setup app)
 
-- Launcher self-updater
-- Stable and beta release channels
-- Version checking
+1. Install [Inno Setup 6](https://jrsoftware.org/isdl.php) (free).
+2. Re-run CMake configure — it detects Inno Setup and enables an `installer` target.
+3. Build, then compile the installer:
 
-### Quality of life
+   ```bash
+   cmake --build build --config Release
+   cmake --build build --target installer
+   ```
 
-- Settings page
-- Build notes
-- Structured logs
-- Light/dark themes
-- Custom accent colors
-- Backend news and status
+4. Run `installer/out/OGFNLauncher-Setup-0.1.0.exe` — it installs the launcher
+   with shortcuts like any other app.
+
+### Option B — Portable
+
+Build from source (below) and run `build\Release\OGFNLauncher.exe` directly.
+
+---
+
+## Installing the 4.10 build
+
+The launcher walks you through this on first run (Setup & Download page):
+
+1. **Download in your browser** — the Setup page opens the archive
+   (`4.10-CL-4053532.zip`, ~27 GB) in your default browser. Save it anywhere
+   you can find it.
+2. **Wait for it to finish** — don't rename the file.
+3. **Import** — click *Select ZIP & install* in the launcher. It extracts the
+   archive next to where you saved it and registers the build.
+   (Or use *pick folder* if you already extracted it.)
+4. **Validation runs automatically** — the Play page shows when the build is ready.
 
 ---
 
 ## How it works
-
-The launcher is split into two main parts:
 
 ```text
 ┌──────────────────────────────────────────┐
@@ -93,209 +108,59 @@ The launcher is split into two main parts:
 │  ┌─────────────────┐  ┌────────────────┐ │
 │  │    WebView2     │  │    C++ Core    │ │
 │  │                 │  │                │ │
-│  │ HTML             │  │ Downloads      │ │
-│  │ CSS              │  │ File handling  │ │
-│  │ JavaScript       │◄►│ Processes      │ │
-│  │                 │  │ Updates        │ │
+│  │ HTML            │  │ Accounts       │ │
+│  │ CSS             │◄►│ Build import   │ │
+│  │ JavaScript      │  │ File handling  │ │
+│  │                 │  │ Processes (v2) │ │
 │  └─────────────────┘  └───────┬────────┘ │
-│                               │          │
 └───────────────────────────────┼──────────┘
-                                │ HTTPS
+                                │ (next phase: HTTPS)
                                 ▼
                        ┌─────────────────┐
                        │  OGFN Backend   │
-                       │                 │
-                       │ Auth            │
-                       │ News            │
-                       │ Builds          │
-                       │ Status          │
+                       │  Auth · Builds  │
+                       │  News · Status  │
                        └─────────────────┘
 ```
 
-### Web UI
+The UI communicates with the C++ core through a small versioned JSON message
+bridge — see [`docs/bridge-protocol.md`](docs/bridge-protocol.md).
 
-The UI lives in `src/web`.
-
-It uses:
-
-- HTML
-- CSS
-- JavaScript
-
-There are **no frontend frameworks**.
-
-### Native core
-
-The native code lives in `src/native`.
-
-It handles things that need access to Windows, such as:
-
-- Downloading files
-- Checking file hashes
-- Starting Fortnite
-- Monitoring processes
-- Saving configuration
-- Updating the launcher
-
-The UI communicates with the C++ core through a small JSON message bridge.
-
----
-
-## Native modules
-
-| File | What it does |
-|---|---|
-| `main.cpp` | Creates the Windows window and WebView2 environment |
-| `bridge.cpp` | Handles communication between JavaScript and C++ |
-| `downloads.cpp` | Downloads, resumes and verifies files |
-| `crypto.cpp` | SHA-256 verification |
-| `process.cpp` | Starts and monitors Fortnite processes |
-| `config.cpp` | Saves launcher settings |
-| `updater.cpp` | Checks for and installs launcher updates |
+The web UI cannot reach the internet directly (strict CSP). Everything flows
+through native actions, which is exactly where backend auth and launching will
+plug in.
 
 ---
 
 ## Requirements
 
-OGFN Launcher currently supports **Windows only**.
+- Windows 10 1809+ or Windows 11, 64-bit
+- Microsoft Edge WebView2 Runtime (preinstalled on modern Windows)
 
-### Supported
+### Building from source
 
-- Windows 10 1809 or newer
-- Windows 11
-- 64-bit Windows
-
-### For building from source
-
-You'll need:
-
-- Visual Studio 2022
-- Desktop development with C++
-- MSVC v143
-- CMake 3.20+
-- WebView2 SDK
-
-WebView2 is already included with modern versions of Windows 10 and Windows 11. The installer can also install it if needed.
-
----
-
-## Installing
-
-Download the latest release from the GitHub Releases page.
-
-Run the installer and start OGFN Launcher.
-
-On the first launch:
-
-1. Enter your backend URL.
-2. Log in.
-3. Import your Fortnite 4.10 build or download it from your configured archive.
-4. Launch the build.
-
-That's it.
-
----
-
-## Building from source
-
-Clone the repository:
-
-```bash
-git clone https://github.com/OWNER/REPO.git
-cd REPO
-```
-
-Configure the project:
+- Visual Studio 2022/2026 (Desktop development with C++) or VS Build Tools
+- CMake 3.20+ (bundled with Visual Studio works)
 
 ```bash
 cmake -B build
-```
-
-Build it:
-
-```bash
 cmake --build build --config Release
 ```
 
-For development, you can run a Debug build and edit the web files without rebuilding the whole UI every time.
+WebView2 SDK and nlohmann/json are fetched automatically at configure time —
+nothing to install manually.
 
 ---
 
 ## Configuration
 
-The launcher stores its configuration here:
-
 ```text
-%APPDATA%\OGFNLauncher\config.json
+%APPDATA%\OGFNLauncher\
+├── config.json      # settings + registered build
+├── accounts.json    # local accounts (PBKDF2-hashed passwords)
+├── session.json     # current session
+└── logs\            # launcher.log (+ 1 rotated generation)
 ```
-
-Example:
-
-```json
-{
-  "backendUrl": "https://your-ogfn-backend.example.com",
-  "releaseChannel": "stable",
-  "defaultBuildPath": "D:/Games/Fortnite Builds",
-  "launchArguments": {},
-  "keepLogs": true
-}
-```
-
-You normally won't need to edit this file manually.
-
----
-
-## Backend API
-
-The launcher is designed to work with different OGFN backends.
-
-A backend can provide things like authentication, available builds, news and server status.
-
-The current API contract is:
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `POST` | `/account/api/oauth/token` | Login |
-| `GET` | `/account/api/oauth/verify` | Check authentication |
-| `GET` | `/launcher/api/news` | Launcher news |
-| `GET` | `/launcher/api/manifest` | Available builds |
-| `GET` | `/launcher/api/status` | Backend status |
-
-The launcher only handles the parts it needs. Once Fortnite starts, the game communicates with the backend normally.
-
----
-
-## Roadmap
-
-### v1.0.0 — Core
-
-- [x] Backend login
-- [x] Configurable backend URL
-- [x] Import local builds
-- [x] Resumable downloads
-- [x] SHA-256 verification
-- [x] Launch builds on Windows
-- [ ] Multiplayer-ready launches (4.10)
-
-### v1.1.0 — Quality of life
-
-- [x] Launcher self-updater
-- [x] Stable/beta channels
-- [x] Settings
-- [x] Logs
-- [x] Per-build launch arguments
-- [x] Multiple clients
-
-### v1.2.0 — Current
-
-- [x] Injection manager
-- [x] DLL library and presets
-- [x] News feed
-- [x] Backend status
-- [x] Light/dark themes
-- [x] Custom accent colors
-- [x] Signed installer
-- [x] Verified releases
 
 ---
 
@@ -303,21 +168,11 @@ The launcher only handles the parts it needs. Once Fortnite starts, the game com
 
 ```text
 ogfn-launcher/
-│
 ├── src/
 │   ├── native/              # C++20 / Win32 / WebView2
-│   │
-│   └── web/                 # HTML / CSS / JavaScript
-│       ├── index.html
-│       ├── css/
-│       └── js/
-│
-├── installer/               # Inno Setup installer
-├── backend/                 # Reference backend
-├── docs/                    # Documentation and screenshots
-├── .github/
-│   └── workflows/           # CI and releases
-│
+│   └── web/                 # HTML / CSS / JavaScript (no frameworks)
+├── installer/               # Inno Setup installer script
+├── docs/bridge-protocol.md  # UI ⇄ native message contract
 └── CMakeLists.txt
 ```
 
@@ -325,15 +180,10 @@ ogfn-launcher/
 
 ## Contributing
 
-Contributions are welcome.
-
-A few simple rules:
-
 1. Keep the web UI framework-free.
 2. Keep the native code C++20.
 3. Keep the code clean and warning-free.
 4. Test your changes before opening a pull request.
-5. For larger changes, open an issue first so we can discuss them.
 
 ---
 
@@ -342,40 +192,23 @@ A few simple rules:
 OGFN Launcher is an unofficial community project.
 
 It is **not affiliated with, endorsed by, or connected to Epic Games, Inc.**
-
 Fortnite is a trademark of Epic Games, Inc.
 
 The launcher:
 
-- Does not include Fortnite game files.
-- Does not distribute Epic Games assets.
-- Does not provide Fortnite builds itself.
+- Does not include or distribute Fortnite game files.
+- Links to a public archive; downloads happen in **your** browser.
 - Uses builds supplied or configured by the user.
 - Does not attempt to bypass DRM.
 
-Private servers and modified Fortnite clients may be against Epic Games' Terms of Service. You are responsible for how you use the launcher.
+Private servers and modified Fortnite clients may be against Epic Games'
+Terms of Service. You are responsible for how you use the launcher.
 
 ---
 
 ## License
 
 OGFN Launcher is released under the **MIT License**.
-
-Third-party libraries and components remain under their respective licenses.
-
----
-
-## Credits
-
-This project wouldn't exist without the work of the OGFN community.
-
-Thanks to the developers and contributors behind projects such as:
-
-- LawinServer
-- Neonite
-- Reboot Launcher
-- Fortnite build archivists
-- Everyone working on the OGFN ecosystem
 
 ---
 
