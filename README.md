@@ -369,11 +369,8 @@ This project wouldn't exist without the work of the OGFN community.
 
 Thanks to the developers and contributors behind projects such as:
 
-- LawinServer
-- Neonite
-- Reboot Launcher
-- Fortnite build archivists
-- Everyone working on the OGFN ecosystem
+- Youssef Hamrouni
+- Mohamed Zdayda
 
 ---
 
