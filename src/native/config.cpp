@@ -21,7 +21,7 @@ static nlohmann::json Defaults() {
           {"validated", false},
           {"importedAt", ""}}},
         {"game",
-         {{"multiplayerOnly", true},          // Season 4 is multiplayer-only
+         {{"mode", "single"},                // single | multiplayer
           {"buildId", "4.10-CL-4053532"}}},
         {"launcher", {{"version", OGFN_VERSION}}},
     };

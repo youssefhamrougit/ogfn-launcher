@@ -39,8 +39,9 @@ ogfn-launcher/
 │   │   ├── accounts.cpp/.h # Local accounts + session (PBKDF2)
 │   │   ├── crypto.cpp/.h   # SHA-256 / PBKDF2 (CNG)
 │   │   ├── build410.cpp/.h # 4.10 build import/validate (ZIP via Shell)
+│   │   ├── download.cpp/.h # In-app downloader (WinHTTP) + install flow
 │   │   ├── log.cpp/.h      # Structured logging
-│   │   └── util.cpp/.h     # Paths, UTF conversion, COM dialogs
+│   │   └── util.cpp/.h     # Paths, UTF conversion, COM dialogs/ZIP extract
 │   └── web/                # Vanilla HTML / CSS / JS
 │       ├── index.html      # Auth screen + Play / Setup / Settings pages
 │       ├── css/
@@ -125,11 +126,21 @@ ogfn-launcher/
 
 ---
 
-## Step 7 — Downloads (single 4.10 manifest)  ⏸ DEFERRED
+## Step 7 — Downloads (in-app Library flow)  ✅ DONE (adapted)
 
-Superseded by the browser-download flow. Chunked in-app downloading can be
-revisited later if a faster/mirrored source is configured; the bridge and CSP
-already funnel all network I/O through native, so this slots in cleanly.
+> Decision: the Library tab downloads the build **inside the launcher**
+> (WinHTTP, resumable via HTTP Range), then auto-installs it: extract →
+> import → validate → registered. The browser-download route is kept on the
+> Setup page as the manual alternative. The download URL is a placeholder
+> until the Internet Archive item is finalized (`download.h: kBuildUrl`).
+
+| Phase | Scope | Status |
+|---|---|---|
+| 7.1 | Library page (Epic-style card, progress bar, pause/resume/cancel) | ✅ |
+| 7.2 | WinHTTP downloader: range resume, retry/backoff, progress events | ✅ |
+| 7.3 | Auto-install after download (extract → import → validate) | ✅ |
+| 7.4 | Completion notification + resume-after-restart (completed.flag) | ✅ |
+| 7.5 | Swap placeholder URL for the final archive.org link | ⏳ waiting on link |
 
 ---
 
@@ -141,8 +152,8 @@ Launching is currently **disabled by design** (`build.launchBlocked: true`).
 | Phase | Scope | Files |
 |---|---|---|
 | 8.1 | Backend OAuth token flow (HTTP client + token storage) | `http.cpp/.h`, `auth.cpp/.h` |
-| 8.2 | Launch with backend auth args (`-AUTH_LOGIN/-AUTH_PASSWORD/-AUTH_URL` style) | `process.cpp/.h` |
-| 8.3 | Gate launch on a verified backend session; unlock the Launch button | auth + process + web |
+| 8.2 | Multiplayer launch with backend auth args (`-AUTH_LOGIN/-AUTH_PASSWORD/-AUTH_URL` style) — single-player launch is live via `game.launch` | `process.cpp/.h` |
+| 8.3 | Gate multiplayer launch on a verified backend session | auth + process + web |
 | 8.4 | Play page: session status, "connect to multiplayer" indicator | web |
 
 **Verify:** launch with a logged-in backend session → game starts with auth
@@ -161,6 +172,6 @@ args; logged-out launch is blocked with a clear message.
 
 ## Current position
 
-➡️ **Steps 1–6 complete and verified.** The launcher builds, runs, and the
-full onboarding flow works: create account → download instructions → import
-ZIP → validation → ready. Next: **Step 8 (server/multiplayer phase)**.
+➡️ **Steps 1–7 complete.** The launcher builds, runs, and the full onboarding
+flow works: create account → Library download → auto-install → validation →
+single-player launch. Next: **Step 8 (server/multiplayer phase)**.

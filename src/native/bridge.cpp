@@ -5,6 +5,7 @@
 #include "build410.h"
 #include "config.h"
 #include "crypto.h"
+#include "download.h"
 #include "log.h"
 #include "util.h"
 
@@ -14,6 +15,22 @@
 namespace bridge {
 
 using nlohmann::json;
+
+namespace {
+
+// ------------------------------------------------------------- event sink
+
+// Set once by main.cpp after the WebView2 is ready. Lets any module push
+// unsolicited events ({"event":..., "data":...}) to the UI.
+EventPoster g_postEvent;
+
+} // namespace
+
+void SetEventPoster(EventPoster poster) { g_postEvent = std::move(poster); }
+
+void PostEvent(const std::string& event, const nlohmann::json& data) {
+    if (g_postEvent) g_postEvent(event, data);
+}
 
 namespace {
 
@@ -53,15 +70,19 @@ json Ping(const json&) {
 
 json GetState(const json&) {
     json build = BuildStatusJson();
-    build["launchBlocked"] = true; // multiplayer gate — see Next Phase note
-    build["launchBlockReason"] =
-        "Multiplayer launching arrives with the server phase. "
-        "Your imported build is stored and validated locally.";
+    // Single-player launching is available once a validated build exists.
+    // Multiplayer arrives with the server phase and gates on a backend session.
+    bool ready = build.value("present", false) && build.value("validated", false);
+    build["launchReady"] = ready;
+    build["launchMode"] = config::Data().value("game", json::object())
+                              .value("mode", "single");
+    build["multiplayerPhasePending"] = true;
     return json{
         {"version", OGFN_VERSION},
         {"account", AccountsSnapshot()},
         {"config", config::Data()},
         {"build", build},
+        {"download", download::StatusJson()},
     };
 }
 
@@ -218,9 +239,100 @@ json ClearData(const json&) {
     // Sign out + wipe config to defaults. Accounts file is kept unless
     // payload.deleteAccounts is true.
     accounts::SignOut();
+    download::ResetToIdle();
     config::Patch(json{{"build", {{"path", ""}, {"state", "none"},
                                   {"validated", false}, {"importedAt", ""}}}});
     return json{{"cleared", true}};
+}
+
+// ---- library / download handlers -----------------------------------------
+
+json DownloadStatus(const json&) { return download::StatusJson(); }
+
+json DownloadStart(const json&) {
+    std::string err;
+    if (!download::Start(err)) return Err(json(), err);
+    return download::StatusJson();
+}
+
+json DownloadPause(const json&) {
+    download::Pause();
+    return download::StatusJson();
+}
+
+json DownloadResume(const json&) {
+    download::Resume();
+    return download::StatusJson();
+}
+
+json DownloadCancel(const json&) {
+    download::Cancel();
+    return download::StatusJson();
+}
+
+json DownloadInstall(const json&) {
+    std::string err;
+    if (!download::Install(err)) return Err(json(), err);
+    return download::StatusJson();
+}
+
+// ---- game launch -----------------------------------------------------------
+
+json GameLaunch(const json& payload) {
+    build410::StatusResult s = build410::Status();
+    if (!s.registered || !s.present)
+        return Err(json(), "No build is installed. Get it from the Library first.");
+    if (!s.validated)
+        return Err(json(), "The build needs validation before it can launch.");
+    if (s.gameExePath.empty())
+        return Err(json(), "Game executable not found in the build folder.");
+
+    // Remember the requested mode (single | multiplayer) for the Play page.
+    std::string mode = payload.value("mode", "single");
+    if (mode != "single" && mode != "multiplayer") mode = "single";
+    config::Patch(json{{"game", {{"mode", mode}}}});
+
+    if (mode == "multiplayer") {
+        // Season 4 is multiplayer-only on private servers; the backend phase
+        // supplies auth args. Until then multiplayer launch is blocked.
+        return Err(json(),
+                   "Multiplayer launching unlocks with the server phase. "
+                   "Single-player works now.");
+    }
+
+    std::wstring exe = util::ToUtf16(s.gameExePath);
+    std::wstring workDir = exe;
+    size_t slash = workDir.find_last_of(L"\\/");
+    if (slash != std::wstring::npos) workDir = workDir.substr(0, slash);
+
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    // Breakaway lets the game outlive the launcher when the launcher itself
+    // runs inside a job object; some hosts deny breakaway, so fall back to a
+    // plain creation if the first try fails.
+    BOOL ok = CreateProcessW(exe.c_str(), exe.data(), nullptr, nullptr, FALSE,
+                             CREATE_BREAKAWAY_FROM_JOB, nullptr, workDir.c_str(),
+                             &si, &pi);
+    if (!ok) {
+        ok = CreateProcessW(exe.c_str(), exe.data(), nullptr, nullptr, FALSE,
+                            0, nullptr, workDir.c_str(), &si, &pi);
+    }
+    if (!ok) {
+        DWORD e = GetLastError();
+        if (e == ERROR_ACCESS_DENIED)
+            return Err(json(), "Windows refused to start the game (access denied). "
+                               "Try running the launcher as administrator once.");
+        return Err(json(), "Could not start the game (error " +
+                               std::to_string(e) + ").");
+    }
+    ogfnlog::Info("launch: pid " + std::to_string(pi.dwProcessId) + " mode=" + mode);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return json{{"launched", true},
+                {"pid", pi.dwProcessId},
+                {"exePath", s.gameExePath},
+                {"mode", mode}};
 }
 
 struct Handler {
@@ -248,6 +360,13 @@ const Handler kHandlers[] = {
     {"shell.openDataFolder", OpenDataFolder},
     {"logs.get", GetLogs},
     {"logs.clearData", ClearData},
+    {"download.status", DownloadStatus},
+    {"download.start", DownloadStart},
+    {"download.pause", DownloadPause},
+    {"download.resume", DownloadResume},
+    {"download.cancel", DownloadCancel},
+    {"download.install", DownloadInstall},
+    {"game.launch", GameLaunch},
 };
 
 } // namespace
@@ -269,10 +388,13 @@ nlohmann::json Handle(const nlohmann::json& request) {
         for (const Handler& h : kHandlers) {
             if (action == h.name) {
                 json result = h.fn(payload);
-                // Handlers that return errors already shaped {id, ok:false}.
+                // Handlers that return errors already shaped {id, ok:false} —
+                // re-stamp the id (handlers construct it with a null id).
                 if (result.contains("ok") && result["ok"].is_boolean() &&
-                    !result["ok"].get<bool>())
+                    !result["ok"].get<bool>()) {
+                    result["id"] = id;
                     return result;
+                }
                 return Ok(id, result);
             }
         }

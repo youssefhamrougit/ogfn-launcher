@@ -2,8 +2,13 @@
 #include "bridge.h"
 #include "accounts.h"
 #include "config.h"
+#include "download.h"
 #include "log.h"
 #include "util.h"
+
+#include <atomic>
+#include <deque>
+#include <mutex>
 
 #include <windows.h>
 #include <dwmapi.h>
@@ -33,6 +38,8 @@ static ComPtr<ICoreWebView2Environment> g_env;
 static ComPtr<ICoreWebView2Controller>  g_controller;
 static ComPtr<ICoreWebView2>            g_webview;
 static bool g_ready = false;
+
+static HWND g_hwnd = nullptr; // main window; events are marshaled to its thread
 
 // ---------------------------------------------------------------- helpers
 
@@ -95,9 +102,61 @@ static void HandleWebMessage(const wchar_t* jsonUtf16) {
     g_webview->PostWebMessageAsJson(out.c_str());
 }
 
+// ---- background events → UI thread ----------------------------------------
+
+constexpr UINT WM_APP_EVENT = WM_APP + 1; // one queued bridge event per message
+
+struct QueuedEvent {
+    std::string event;
+    std::string data;
+};
+
+static std::mutex g_eventMutex;
+static std::deque<QueuedEvent> g_eventQueue;
+
+static void QueueBridgeEvent(const std::string& event, const std::string& data) {
+    {
+        std::lock_guard<std::mutex> lk(g_eventMutex);
+        g_eventQueue.push_back({event, data});
+        // Hard cap so a runaway producer can't grow memory unbounded.
+        while (g_eventQueue.size() > 256) g_eventQueue.pop_front();
+    }
+    if (g_hwnd) PostMessageW(g_hwnd, WM_APP_EVENT, 0, 0);
+}
+
+static void DrainEvents() {
+    for (;;) {
+        QueuedEvent ev;
+        {
+            std::lock_guard<std::mutex> lk(g_eventMutex);
+            if (g_eventQueue.empty()) return;
+            ev = std::move(g_eventQueue.front());
+            g_eventQueue.pop_front();
+        }
+        if (!g_webview) continue;
+        nlohmann::json msg{{"event", ev.event}};
+        try {
+            msg["data"] = nlohmann::json::parse(ev.data);
+        } catch (...) {
+            msg["data"] = nlohmann::json::object();
+        }
+        std::wstring out = util::ToUtf16(msg.dump());
+        g_webview->PostWebMessageAsJson(out.c_str());
+    }
+}
+
 // ---------------------------------------------------------------- webview
 
 static bool RegisterWebView2Host(HWND hwnd) {
+    g_hwnd = hwnd;
+
+    // Events raised by background modules (downloader etc.) reach the UI via
+    // the queued-message drain above.
+    bridge::SetEventPoster(
+        [](const std::string& event, const nlohmann::json& data) {
+            QueueBridgeEvent(event, data.dump());
+        });
+
     // User data folder inside our %APPDATA% (writable even under Program Files).
     std::wstring userData = util::AppDataDir() + L"\\WebView2";
 
@@ -188,6 +247,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case WM_SIZE:
             ResizeWebView(hwnd);
             return 0;
+        case WM_APP_EVENT:
+            DrainEvents();
+            return 0;
         case WM_GETMINMAXINFO: {
             auto* mmi = reinterpret_cast<MINMAXINFO*>(lp);
             mmi->ptMinTrackSize = {960, 620};
@@ -196,6 +258,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         case WM_DESTROY:
             if (g_webview)   g_webview->Stop();
             if (g_controller) g_controller->Close();
+            download::Shutdown();
             PostQuitMessage(0);
             return 0;
         default:
@@ -264,6 +327,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     ogfnlog::Init();
     config::Load();
     accounts::Init();
+
+    // If a previous session finished downloading but never installed, offer
+    // the install instead of forcing a re-download.
+    {
+        std::string err;
+        if (download::HasCompletedZip()) download::Install(err);
+    }
 
     int rc = Run();
 

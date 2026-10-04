@@ -70,6 +70,10 @@
       <button class="nav-item" data-page="play" type="button">
         <span class="icon">▶</span> Play
       </button>
+      <button class="nav-item" data-page="library" type="button">
+        <span class="icon">▦</span> Library
+        <span class="lock" id="library-dot" style="display:none">●</span>
+      </button>
       <button class="nav-item" data-page="setup" type="button">
         <span class="icon">⭳</span> Setup &amp; Download
       </button>
@@ -103,9 +107,13 @@
             <button class="btn primary large" id="launch-btn" type="button" disabled>
               🔒 Launch
             </button>
-            <div class="faint" id="launch-note">
-              Launch unlocks with the multiplayer phase.
-            </div>
+            <button class="btn" id="mode-single" type="button">Single player</button>
+            <button class="btn" id="mode-multi" type="button" title="Unlocks with the server phase">
+              Multiplayer 🔒
+            </button>
+          </div>
+          <div class="faint" id="launch-note" style="margin-top:12px">
+            Install the build from the Library to unlock launching.
           </div>
         </div>
 
@@ -113,10 +121,54 @@
         <div class="card" id="build-details" style="font-size:14px"></div>
       </section>
 
+      <!-- ============ LIBRARY ============ -->
+      <section class="page" id="page-library">
+        <h1 class="page-title">Library</h1>
+        <p class="page-sub">Download and manage your Season 4 build — right inside the launcher.</p>
+
+        <div class="game-card" id="game-card">
+          <div class="game-art">
+            <div class="art-badge">S4</div>
+          </div>
+          <div class="game-info">
+            <div class="game-title">Fortnite — Season 4</div>
+            <div class="game-meta">
+              <span class="mono">4.10-CL-4053532</span> · ~28 GB download
+            </div>
+
+            <div id="lib-progress" style="display:none; margin-top:14px">
+              <div class="pbar"><div class="pbar-fill" id="lib-bar"></div></div>
+              <div class="pmeta">
+                <span id="lib-pct">0%</span>
+                <span id="lib-amounts" class="faint"></span>
+                <span id="lib-rate" class="faint"></span>
+              </div>
+            </div>
+
+            <div id="lib-phase" class="faint" style="display:none; margin-top:10px"></div>
+
+            <div class="lib-actions" id="lib-actions"></div>
+            <div class="error-text" id="lib-error"></div>
+            <div class="faint" id="lib-note" style="margin-top:10px">
+              The download runs inside the launcher — you can pause, resume or cancel it.
+              Progress keeps going while you use other pages.
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ============ SETUP & DOWNLOAD ============ -->
       <section class="page" id="page-setup">
         <h1 class="page-title">Setup &amp; Download</h1>
         <p class="page-sub">Get Season 4 (4.10) onto your PC and import it.</p>
+
+        <div class="callout info" style="margin-bottom:18px">
+          <span>ⓘ</span>
+          <span>
+            The easy way is the <b>Library</b> tab — it downloads and installs
+            the build for you. This page is the manual route.
+          </span>
+        </div>
 
         <div class="steps">
           <!-- STEP 1: download in browser -->
@@ -161,9 +213,8 @@
             <div class="body">
               <div class="t">Import the ZIP into the launcher</div>
               <div class="d">
-                The launcher extracts the archive next to where you saved it and
-                registers the build. You can also import a build that's already
-                extracted as a folder.
+                The launcher extracts the archive and registers the build. You can
+                also import a build that's already extracted as a folder.
               </div>
               <div class="actions">
                 <button class="btn primary" id="import-zip-btn" type="button">
@@ -197,8 +248,9 @@
           <span>⚠</span>
           <span>
             Extracting a ~27&nbsp;GB ZIP can take several minutes. Don't close the
-            launcher while <span class="mono">explorer.exe</span> is doing the work —
-            you'll see the files appear in the destination folder.
+            launcher while the extraction is running —
+            you'll see the files appear in the destination folder
+            (<span class="mono">&lt;drive&gt;\OGFN Builds</span>).
           </span>
         </div>
       </section>

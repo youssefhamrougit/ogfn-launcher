@@ -71,6 +71,7 @@ add_executable(OGFNLauncher WIN32
     src/native/crypto.cpp
     src/native/accounts.cpp
     src/native/build410.cpp
+    src/native/download.cpp
     src/native/ogfnlauncher.rc
 )
 
@@ -94,6 +95,7 @@ target_link_directories(OGFNLauncher PRIVATE "${WEBVIEW2_LIB_DIR}")
 # WebView2LoaderStatic = static loader lib (no extra DLL to ship).
 # d2d1/dxgi/shcore are used by WebView2 hosting and DPI handling.
 # crypt32 is used for SHA-256 (bcrypt is part of the CRT set).
+# winhttp drives the Library download flow.
 target_link_libraries(OGFNLauncher PRIVATE
     WebView2LoaderStatic
     d2d1
@@ -104,6 +106,7 @@ target_link_libraries(OGFNLauncher PRIVATE
     userenv
     oleaut32
     uuid
+    winhttp
 )
 
 # ---------------------------------------------------------------------------

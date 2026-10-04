@@ -27,24 +27,36 @@ Failure:
 { "id": 1, "ok": false, "error": "Incorrect password." }
 ```
 
-Unsolicited events (future phases):
+Unsolicited events (native → UI):
 
 ```json
-{ "event": "download.progress", "data": { "percent": 42 } }
+{ "event": "download.progress", "data": { "state": "downloading", "bytesNow": 42, "bytesTotal": 100, "percent": 42.0, "rate": 2048 } }
+{ "event": "download.state",     "data": { } }   // full download status snapshot
+{ "event": "download.error",     "data": { } }   // status snapshot + error
 ```
+
+Events are raised by background workers (downloader). They are queued on the
+UI thread and delivered via `PostWebMessageAsJson`.
 
 ## Actions (current)
 
 | Action | Payload | Result |
 |---|---|---|
 | `ping` | — | `{pong, version}` |
-| `state.get` | — | `{version, account, config, build}` (build includes `launchBlocked: true` until the multiplayer phase) |
+| `state.get` | — | `{version, account, config, build, download}` (build includes `launchReady`, `launchMode`; single-player launching is live, multiplayer waits for the server phase) |
 | `config.patch` | deep-merge object, e.g. `{theme:"light"}` | full config |
 | `account.signUp` | `{username, password}` | `{signedIn, username}` |
 | `account.signIn` | `{username, password}` | `{signedIn, username}` |
 | `account.signOut` | — | `{signedIn, username}` |
 | `account.changePassword` | `{currentPassword, newPassword}` | `{changed}` |
 | `account.delete` | `{password}` | `{signedIn:false}` |
+| `download.status` | — | download status object |
+| `download.start` | — | download status object (starts/resumes the build download) |
+| `download.pause` | — | download status object |
+| `download.resume` | — | download status object |
+| `download.cancel` | — | download status object (deletes the partial file) |
+| `download.install` | — | download status object (extract → import → validate from the already-downloaded zip) |
+| `game.launch` | `{mode: "single"\|"multiplayer"}` | `{launched, pid, exePath, mode}` — multiplayer is rejected until the server phase |
 | `build.importFromZip` | `{zipPath}` | build status object |
 | `build.importFromFolder` | `{folderPath}` | build status object |
 | `build.validate` | — | `{ok, error, checksPassed, checksTotal}` |
@@ -56,6 +68,26 @@ Unsolicited events (future phases):
 | `shell.openDataFolder` | — | `{opened}` |
 | `logs.get` | — | `{logs}` |
 | `logs.clearData` | — | `{cleared}` |
+
+### Download status object
+
+```json
+{
+  "state": "idle | downloading | paused | installing | done | error",
+  "url": "https://…",
+  "error": "",
+  "bytesNow": 123456789,
+  "bytesTotal": 28000000000,
+  "zipPath": "C:/…/downloads/4.10-CL-4053532.zip",
+  "fileName": "4.10-CL-4053532.zip",
+  "phase": "extracting | importing | validating",
+  "phaseProgress": 0.42
+}
+```
+
+`phase`/`phaseProgress` appear only while installing. Downloads resume via
+HTTP `Range` from the partial file; a `completed.flag` beside the zip marks a
+finished-but-not-installed download so install can resume after a restart.
 
 ## Rules
 

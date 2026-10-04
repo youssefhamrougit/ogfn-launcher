@@ -49,4 +49,9 @@ StatusResult Status();
 // Path of the game exe for a given build folder ("" if absent).
 std::wstring FindGameExe(const std::wstring& buildDir);
 
+// Find the build root (folder containing FortniteGame) under a user-picked or
+// extraction directory. Checks the folder itself plus a few standard nested
+// layouts. Returns "" when no recognizable 4.10 build is present.
+std::wstring LocateBuildRoot(const std::wstring& folder);
+
 } // namespace build410

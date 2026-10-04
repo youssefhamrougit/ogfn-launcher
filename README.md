@@ -48,16 +48,29 @@ Edge WebView2**. The native parts are C++20.
 - Validation of the core build layout before you play
 - One-click copy of the download link
 
+### Library — in-app download
+
+- One-click **Download** for the 4.10 build right inside the launcher
+  (Epic-Games-style Library card with live progress bar, speed and pause /
+  resume / cancel)
+- Auto-install after download: extract → import → validate → ready
+- Downloads resume after interruptions (HTTP Range) and launcher restarts
+- Toast notification when the build is ready to play
+
 ### Launcher
 
 - Dark / light theme + custom accent color
 - Structured logs (viewable in-app from Settings)
 - Config in `%APPDATA%\OGFNLauncher\config.json`
 
+### Playing now
+
+- **Single player** launching works once the build is installed (Play tab)
+
 ### Multiplayer (next phase)
 
 - Backend OAuth login and server accounts
-- Launch button unlocks once a backend session can be verified
+- Multiplayer launch unlocks once a backend session can be verified
 - Auth passed to the game for multiplayer sessions
 
 ---
@@ -86,14 +99,22 @@ Build from source (below) and run `build\Release\OGFNLauncher.exe` directly.
 
 ## Installing the 4.10 build
 
-The launcher walks you through this on first run (Setup & Download page):
+### The easy way — Library (recommended)
 
-1. **Download in your browser** — the Setup page opens the archive
-   (`4.10-CL-4053532.zip`, ~27 GB) in your default browser. Save it anywhere
-   you can find it.
+1. Sign in and open the **Library** tab.
+2. Click **Download**. The launcher downloads `4.10-CL-4053532.zip` (~28 GB)
+   with a live progress bar — pause, resume or cancel any time.
+3. When the download finishes, the build installs itself automatically
+   (extract → import → validate) and you get a "ready to play" notification.
+4. Go to **Play** and hit **Launch** (single player).
+
+### The manual way — Setup & Download page
+
+1. **Download in your browser** — the Setup page opens the archive in your
+   default browser. Save it anywhere you can find it.
 2. **Wait for it to finish** — don't rename the file.
 3. **Import** — click *Select ZIP & install* in the launcher. It extracts the
-   archive next to where you saved it and registers the build.
+   archive and registers the build.
    (Or use *pick folder* if you already extracted it.)
 4. **Validation runs automatically** — the Play page shows when the build is ready.
 
@@ -159,8 +180,12 @@ nothing to install manually.
 ├── config.json      # settings + registered build
 ├── accounts.json    # local accounts (PBKDF2-hashed passwords)
 ├── session.json     # current session
+├── downloads\       # in-progress / finished build ZIP + completed.flag
 └── logs\            # launcher.log (+ 1 rotated generation)
 ```
+
+The extracted build lands in `<system drive>\OGFN Builds\4.10-CL-4053532`
+by default (it is ~28 GB extracted — too big for %APPDATA%).
 
 ---
 
@@ -169,7 +194,7 @@ nothing to install manually.
 ```text
 ogfn-launcher/
 ├── src/
-│   ├── native/              # C++20 / Win32 / WebView2
+│   ├── native/              # C++20 / Win32 / WebView2 (incl. downloader)
 │   └── web/                 # HTML / CSS / JavaScript (no frameworks)
 ├── installer/               # Inno Setup installer script
 ├── docs/bridge-protocol.md  # UI ⇄ native message contract
@@ -197,7 +222,9 @@ Fortnite is a trademark of Epic Games, Inc.
 The launcher:
 
 - Does not include or distribute Fortnite game files.
-- Links to a public archive; downloads happen in **your** browser.
+- Links to a public archive; the in-app downloader fetches the archive
+  directly over HTTPS, and the browser route is still available on the Setup
+  page.
 - Uses builds supplied or configured by the user.
 - Does not attempt to bypass DRM.
 
