@@ -80,7 +80,7 @@ target_compile_definitions(OGFNLauncher PRIVATE
     OGFN_VERSION="0.1.0"
 )
 
-target_compile_options(OGFNLauncher PRIVATE /W4 /permissive-)
+ target_compile_options(OGFNLauncher PRIVATE /W4 /permissive-)
 # The manifest is embedded via ogfnlauncher.rc (DPI awareness etc.), so the
 # linker must not generate a second one.
 target_link_options(OGFNLauncher PRIVATE -nodefaultlibs)
