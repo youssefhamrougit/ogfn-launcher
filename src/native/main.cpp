@@ -57,6 +57,12 @@ static bool FileExists(const std::wstring& p) {
 
 // index.html next to the exe (CMake copies src/web there after every build).
 static std::wstring WebIndexPath() {
+    // DEV MODE: Load directly from source to avoid rebuilding the EXE for UI changes.
+    // This path matches the user's local development directory.
+    std::wstring devPath = L"C:\\Users\\PcDream\\Documents\\GitHub\\ogfn-launcher\\src\\web\\index.html";
+    if (FileExists(devPath)) {
+        return devPath;
+    }
     return ExeDir() + L"\\web\\index.html";
 }
 

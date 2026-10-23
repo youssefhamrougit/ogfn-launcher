@@ -212,6 +212,15 @@ json PickZipSave(const json&) {
     return json{{"path", path}};
 }
 
+json OpenFile(const json& payload) {
+    std::string path = payload.value("path", "");
+    if (path.empty()) return Err(json(), "No path given.");
+    HINSTANCE r = ShellExecuteW(nullptr, L"open", util::ToUtf16(path).c_str(),
+                                nullptr, nullptr, SW_SHOWNORMAL);
+    if ((INT_PTR)r <= 32) return Err(json(), "Could not open file.");
+    return json{{"opened", true}};
+}
+
 json OpenInBrowser(const json& payload) {
     std::string url = payload.value("url", "");
     if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0)
@@ -357,6 +366,7 @@ const Handler kHandlers[] = {
     {"dialog.pickZipSave", PickZipSave},
     {"dialog.pickFolder", PickFolder},
     {"shell.openInBrowser", OpenInBrowser},
+    {"shell.openFile", OpenFile},
     {"shell.openDataFolder", OpenDataFolder},
     {"logs.get", GetLogs},
     {"logs.clearData", ClearData},

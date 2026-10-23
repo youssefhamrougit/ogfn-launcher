@@ -9,8 +9,8 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "OGFN Launcher only supports 64-bit builds.")
 endif()
 
-if(NOT MSVC)
-    message(FATAL_ERROR "OGFN Launcher requires MSVC (Visual Studio 2022/2026, Desktop development with C++).")
+if(NOT MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "OGFN Launcher requires MSVC (Visual Studio 2022/2026, Desktop development with C++) or Clang.")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -80,10 +80,10 @@ target_compile_definitions(OGFNLauncher PRIVATE
     OGFN_VERSION="0.1.0"
 )
 
-target_compile_options(OGFNLauncher PRIVATE /W4 /permissive-)
+target_compile_options(OGFNLauncher PRIVATE -Wall -Wextra)
 # The manifest is embedded via ogfnlauncher.rc (DPI awareness etc.), so the
 # linker must not generate a second one.
-target_link_options(OGFNLauncher PRIVATE /MANIFEST:NO)
+target_link_options(OGFNLauncher PRIVATE -nodefaultlibs)
 
 target_include_directories(OGFNLauncher PRIVATE
     "${WEBVIEW2_INCLUDE_DIR}"

@@ -574,6 +574,12 @@ function wire() {
     try { await Bridge.call("shell.openInBrowser", { url: DOWNLOAD_URL }); }
     catch (e) { toast(e.message); }
   });
+  $("#direct-download-btn").addEventListener("click", async () => {
+    try {
+      await Bridge.call("shell.openFile", { path: "C:\\Users\\PcDream\\Desktop\\4.10-CL-4053532.zip" });
+      toast("Opening local file...");
+    } catch (e) { toast(e.message); }
+  });
   $("#copy-download-link").addEventListener("click", () => copyText(DOWNLOAD_URL, "Download link"));
   $("#copy-link-2").addEventListener("click", () => copyText(DOWNLOAD_URL, "Download link"));
   $("#download-url").textContent = DOWNLOAD_URL;
