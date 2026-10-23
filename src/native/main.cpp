@@ -13,11 +13,11 @@
 #include <windows.h>
 #include <dwmapi.h>
 
-#include <wrl/event.h>
-#include <wrl/module.h>
-#include <wrl/wrappers/corewrappers.h>
-#include <wrl/client.h>
-#include <ShlObj.h>
+#include <windows.h>
+#include <shellapi.h>
+#include <shlobj.h>
+#include "WebView2.h"
+#include "WebView2EnvironmentOptions.h"
 
 #include "WebView2.h"
 #include "WebView2EnvironmentOptions.h"

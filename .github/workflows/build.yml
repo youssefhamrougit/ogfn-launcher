@@ -1,0 +1,33 @@
+name: Build OGFN Launcher
+
+on:
+  push:
+    branches: [ main, dev, newfeatures ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S .
+
+      - name: Build Project
+        run: |
+          cmake --build build --config Release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OGFNLauncher-Release
+          path: build/Release/OGFNLauncher.exe

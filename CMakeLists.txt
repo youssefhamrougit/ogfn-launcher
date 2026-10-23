@@ -89,6 +89,7 @@ target_include_directories(OGFNLauncher PRIVATE
     "${WEBVIEW2_INCLUDE_DIR}"
     "${JSON_INCLUDE_DIR}"
     src/native
+    src/native/wrl
 )
 target_link_directories(OGFNLauncher PRIVATE "${WEBVIEW2_LIB_DIR}")
 
