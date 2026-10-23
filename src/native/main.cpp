@@ -1,31 +1,37 @@
-// main.cpp — Win32 host window + WebView2 lifecycle for OGFN Launcher.
-#include "bridge.h"
-#include "accounts.h"
-#include "config.h"
-#include "download.h"
-#include "log.h"
-#include "util.h"
+ #include "bridge.h"
+  #include "accounts.h"
+  #include "config.h"
+  #include "download.h"
+  #include "log.h"
+  #include "util.h"
 
-#include <atomic>
-#include <deque>
-#include <mutex>
+  #include <atomic>
+  #include <deque>
+  #include <mutex>
+  #include <windows.h>
+  #include <dwmapi.h>
+  #include <shellapi.h>
+  #include <shlobj.h>
+  #include <filesystem>
+  #include <string>
 
-#include <windows.h>
-#include <dwmapi.h>
+  #ifdef _MSC_VER
+      #include <wrl/client.h>
+  #else
+      #include <memory>
+      namespace Microsoft { namespace WRL {
+          template <typename T> using ComPtr = std::shared_ptr<T>;
+          template <typename T> struct RuntimeClass { static T* Create() { return nullptr; } };
+          template <typename T> struct Implements {};
+          struct ClassicCom {};
+          template <typename T, typename... Args> struct RuntimeClassFlags {};
+      }}
+  #endif
 
-#include <windows.h>
-#include <shellapi.h>
-#include <shlobj.h>
-#include "WebView2.h"
-#include "WebView2EnvironmentOptions.h"
+  #include "WebView2.h"
+  #include "WebView2EnvironmentOptions.h"
 
-#include "WebView2.h"
-#include "WebView2EnvironmentOptions.h"
-
-#include <filesystem>
-#include <string>
-
-using namespace Microsoft::WRL;
+  using namespace Microsoft::WRL;
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
